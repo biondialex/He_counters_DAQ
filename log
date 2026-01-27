@@ -1,0 +1,29 @@
+acq loop start
+acq loop start
+acq loop start
+acq loop start
+Opening card : TCPIP::192.168.0.16::inst0::INSTR
+Opening card : TCPIP::192.168.0.16::inst1::INSTR
+Opening card : TCPIP::192.168.0.16::inst2::INSTR
+Opening card : TCPIP::192.168.0.16::inst3::INSTR
+Opening starhub
+Configuring  card : 0
+Configuring  card : 1
+Configuring  card : 2
+Configuring  card : 3
+acq loop3
+acq loop1
+acq loopacq loop2
+0
+disp_buf 12
+disp_buf 13
+disp_buf 14
+disp_buf 15
+acq loop3
+acq loop0
+acq loopacq loop2
+1
+acq loop3
+acq loop1
+acq loop2
+acq loop0
