@@ -101,6 +101,13 @@ MySpectrumFrame::MySpectrumFrame(const TGWindow* p, UInt_t w, UInt_t h)
         fHist[ch]->GetXaxis()->SetRangeUser(ENERGY_MIN, chMax);
         fHist[ch]->SetLineWidth(1);
         fHist[ch]->SetStats(kFALSE);
+        fHist[ch]->SetTitleSize(0.15, "T");   // static cosmetics
+        fHist[ch]->SetLabelSize(0.1, "X");
+        fHist[ch]->SetLabelSize(0.1, "Y");
+        fHist[ch]->SetTitleSize(0.1, "X");
+        fHist[ch]->SetTitleSize(0.1, "Y");
+        fHist[ch]->SetTitleOffset(1.0, "X");
+        fHist[ch]->SetTitleOffset(1.1, "Y");
 
         fRoiLow[ch]  = ENERGY_MIN;
         fRoiHigh[ch] = chMax;
@@ -127,8 +134,8 @@ MySpectrumFrame::MySpectrumFrame(const TGWindow* p, UInt_t w, UInt_t h)
     //int nRows = (nActive + nCols - 1) / nCols;
     fCan->Divide(1,nActive);
     */
-    // Timer to refresh, e.g. every 1000 ms
-    fTimer = new TTimer(this, 1000, kTRUE);
+    // Timer to refresh, e.g. every 2000 ms
+    fTimer = new TTimer(this, 2000, kTRUE);
     fTimer->TurnOn();
 
     SetWindowName("Energy Spectra");
@@ -148,6 +155,11 @@ MySpectrumFrame::~MySpectrumFrame()
 
 void MySpectrumFrame::UpdateHistograms()
 {
+    if (!IsMapped()) {
+        fAxisDirty = true; // ensure refresh next time it's shown
+        return;
+    }
+
     int nActive = 0;
     for (int ch = 0; ch < CHANNEL_NUMBER; ++ch) {
         if (channel_enabled[ch]) ++nActive;
@@ -168,6 +180,7 @@ void MySpectrumFrame::UpdateHistograms()
 
     fCan->cd(0);
 
+    bool anyPadChanged = false;
     int padIndex = 1;
     for (int ch = 0; ch < CHANNEL_NUMBER; ++ch) {
         if (!channel_enabled[ch]) continue;
@@ -200,17 +213,9 @@ void MySpectrumFrame::UpdateHistograms()
 
         fHist[ch]->GetXaxis()->SetRangeUser(ENERGY_MIN, xMax);
 
-        
-        fHist[ch]->SetTitleSize(0.15, "T");   // title
-        fHist[ch]->SetLabelSize(0.1, "X");   // axis numbers
-        fHist[ch]->SetLabelSize(0.1, "Y");
-        fHist[ch]->SetTitleSize(0.1, "X");  // axis titles
-        fHist[ch]->SetTitleSize(0.1, "Y");
-        fHist[ch]->SetTitleOffset(1.0, "X");
-        fHist[ch]->SetTitleOffset(1.1, "Y");
-
         fHist[ch]->Draw();
         fHistDrawn[ch] = true;
+        anyPadChanged = true;
         
         // ROI bounds
         double lo = fRoiLow[ch];
@@ -259,8 +264,10 @@ void MySpectrumFrame::UpdateHistograms()
     }
 
     fAxisDirty = false;
-    fCan->Modified();
-    fCan->Update();
+    if (anyPadChanged) {
+        fCan->Modified();
+        fCan->Update();
+    }
 }
 
 

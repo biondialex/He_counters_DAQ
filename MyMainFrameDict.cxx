@@ -241,7 +241,7 @@ nullptr
     };
     static const char* includePaths[] = {
 "/home/zdfk/root_install/include/",
-"/home/zdfk/ACQ_SOFT/alex/Alpha_spectrometer/SPECTRUM_ACQ/SPECT_GUI/",
+"/home/zdfk/Desktop/He_Counters_DAQ/",
 nullptr
     };
     static const char* fwdDeclCode = R"DICTFWDDCLS(
