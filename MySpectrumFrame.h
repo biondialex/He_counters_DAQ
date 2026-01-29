@@ -11,6 +11,7 @@
 #include <TLine.h>
 #include <TGLabel.h>
 #include <TFrame.h>
+#include <vector>
 #include "device_config.h"
 #include "spectrum_acq.h"  // for CHANNEL_NUMBER, ENERGY_NBINS, ENERGY_MIN, ENERGY_MAX
 
@@ -57,6 +58,10 @@ private:
     TLine fRoiLineLow[CHANNEL_NUMBER];
     TLine fRoiLineHigh[CHANNEL_NUMBER];
     TPaveText* fRoiPave[CHANNEL_NUMBER];
+    std::vector<uint64_t> fLastSpectrum[CHANNEL_NUMBER];
+    bool fHistDrawn[CHANNEL_NUMBER];
+    bool fRoiDirty[CHANNEL_NUMBER];
+    bool fAxisDirty;
 
 
     void UpdateHistograms();

@@ -3,6 +3,7 @@
 #include <TCanvas.h>
 #include <TROOT.h>
 #include <TSystem.h>
+#include <limits>
 
 // extern energy_spectrum from spectrum_acq.cxx
 extern uint64_t energy_spectrum[CHANNEL_NUMBER][ENERGY_NBINS];
@@ -15,6 +16,7 @@ MySpectrumFrame::MySpectrumFrame(const TGWindow* p, UInt_t w, UInt_t h)
     fZoomMax = 100.0;  // your zoom max
     fCurrentXMax = fZoomMax;
     fLastActiveChannels = -1;
+    fAxisDirty = true;
 
     // --- Buttons row ---
     fButtonFrame = new TGHorizontalFrame(this);
@@ -104,6 +106,9 @@ MySpectrumFrame::MySpectrumFrame(const TGWindow* p, UInt_t w, UInt_t h)
         fRoiHigh[ch] = chMax;
 
         fRoiPave[ch]      = nullptr;
+        fLastSpectrum[ch].assign(ENERGY_NBINS, std::numeric_limits<uint64_t>::max());
+        fHistDrawn[ch] = false;
+        fRoiDirty[ch] = true;
 
         fRoiLineLow[ch].SetLineColor(kRed);
         fRoiLineHigh[ch].SetLineColor(kRed);
@@ -122,8 +127,8 @@ MySpectrumFrame::MySpectrumFrame(const TGWindow* p, UInt_t w, UInt_t h)
     //int nRows = (nActive + nCols - 1) / nCols;
     fCan->Divide(1,nActive);
     */
-    // Timer to refresh, e.g. every 500 ms
-    fTimer = new TTimer(this, 500, kTRUE);
+    // Timer to refresh, e.g. every 1000 ms
+    fTimer = new TTimer(this, 1000, kTRUE);
     fTimer->TurnOn();
 
     SetWindowName("Energy Spectra");
@@ -153,6 +158,12 @@ void MySpectrumFrame::UpdateHistograms()
         fLastActiveChannels = nActive;
         fCan->Clear();
         fCan->Divide(1, nActive);
+        fAxisDirty = true;
+        for (int ch = 0; ch < CHANNEL_NUMBER; ++ch) {
+            fHistDrawn[ch] = false;
+            fRoiDirty[ch] = true;
+            fLastSpectrum[ch].assign(ENERGY_NBINS, std::numeric_limits<uint64_t>::max());
+        }
     }
 
     fCan->cd(0);
@@ -164,10 +175,20 @@ void MySpectrumFrame::UpdateHistograms()
         fCan->cd(padIndex);
         gPad->SetLogy(true);
 
-        // copy counts
+        bool histChanged = false;
+        // copy counts (only update bins that changed)
         for (int b = 0; b < ENERGY_NBINS; ++b) {
-            fHist[ch]->SetBinContent(b + 1,
-                                     static_cast<double>(energy_spectrum[ch][b]));
+            uint64_t value = energy_spectrum[ch][b];
+            if (!fHistDrawn[ch] || value != fLastSpectrum[ch][b]) {
+                fHist[ch]->SetBinContent(b + 1, static_cast<double>(value));
+                fLastSpectrum[ch][b] = value;
+                histChanged = true;
+            }
+        }
+
+        if (!histChanged && !fRoiDirty[ch] && !fAxisDirty && fHistDrawn[ch]) {
+            padIndex++;
+            continue;
         }
 
         // enforce current x-range here
@@ -189,6 +210,7 @@ void MySpectrumFrame::UpdateHistograms()
         fHist[ch]->SetTitleOffset(1.1, "Y");
 
         fHist[ch]->Draw();
+        fHistDrawn[ch] = true;
         
         // ROI bounds
         double lo = fRoiLow[ch];
@@ -210,18 +232,13 @@ void MySpectrumFrame::UpdateHistograms()
         double ymin = 0.0;
         double ymax = 1e10;
 
-        auto* prim = gPad->GetListOfPrimitives();
-        prim->Remove(&fRoiLineLow[ch]);
-        prim->Remove(&fRoiLineHigh[ch]);
-        if (fRoiPave[ch]) prim->Remove(fRoiPave[ch]);
-
         fRoiLineLow[ch].SetX1(lo); fRoiLineLow[ch].SetY1(ymin);
         fRoiLineLow[ch].SetX2(lo); fRoiLineLow[ch].SetY2(ymax);
         fRoiLineHigh[ch].SetX1(hi); fRoiLineHigh[ch].SetY1(ymin);
         fRoiLineHigh[ch].SetX2(hi); fRoiLineHigh[ch].SetY2(ymax);
 
-        fRoiLineLow[ch].Draw();
-        fRoiLineHigh[ch].Draw();
+        fRoiLineLow[ch].Draw("same");
+        fRoiLineHigh[ch].Draw("same");
 
         // Text box
         if (!fRoiPave[ch]) {
@@ -236,10 +253,12 @@ void MySpectrumFrame::UpdateHistograms()
         fRoiPave[ch]->AddText(Form("Counts: %.0f", counts));
         fRoiPave[ch]->AddText(Form("Rate: %.3f Hz", rate));
         fRoiPave[ch]->Draw("same");
+        fRoiDirty[ch] = false;
 
         padIndex++;
     }
 
+    fAxisDirty = false;
     fCan->Modified();
     fCan->Update();
 }
@@ -266,6 +285,7 @@ void MySpectrumFrame::CloseWindow()
 void MySpectrumFrame::OnFullRange()
 {
     fCurrentXMax = ENERGY_MAX;
+    fAxisDirty = true;
 
     UpdateHistograms();
 }
@@ -276,6 +296,7 @@ void MySpectrumFrame::OnZoomRange()
     if (xmax > ENERGY_MAX) xmax = ENERGY_MAX;
 
     fCurrentXMax = xmax;
+    fAxisDirty = true;
     UpdateHistograms();
 }
 
@@ -288,6 +309,9 @@ void MySpectrumFrame::OnClearSpectra()
     // Also clear local histograms immediately
     for (int ch = 0; ch < CHANNEL_NUMBER; ++ch) {
         fHist[ch]->Reset();
+        fHistDrawn[ch] = false;
+        fLastSpectrum[ch].assign(ENERGY_NBINS, std::numeric_limits<uint64_t>::max());
+        fRoiDirty[ch] = true;
     }
 
     fCan->Modified();
@@ -307,6 +331,7 @@ void MySpectrumFrame::OnApplyRoi()
 
         fRoiLow[ch]  = std::max(lo, ENERGY_MIN);
         fRoiHigh[ch] = std::min(hi, chMax);
+        fRoiDirty[ch] = true;
 
     }
 
@@ -350,4 +375,3 @@ Bool_t MySpectrumFrame::ProcessMessage(Long_t msg, Long_t parm1, Long_t parm2)
     // Let base class handle other messages
     return TGMainFrame::ProcessMessage(msg, parm1, parm2);
 } 
-
