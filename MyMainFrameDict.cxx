@@ -240,8 +240,8 @@ namespace {
 nullptr
     };
     static const char* includePaths[] = {
-"/home/zdfk/root_install/include/",
-"/home/zdfk/Desktop/He_Counters_DAQ/",
+"/home/zdfk/root/include/",
+"/home/zdfk/Desktop/He_counters_DAQ/",
 nullptr
     };
     static const char* fwdDeclCode = R"DICTFWDDCLS(

@@ -53,13 +53,13 @@ MyConfigFrame::MyConfigFrame(const TGWindow *p, UInt_t w, UInt_t h) :
 	if ( channel_trig_pol [channel] == 2) polP_cButton [channel] -> SetState (kButtonDown); else polP_cButton [channel] -> SetState (kButtonUp); 
         fGframes[channel] -> AddFrame(polP_cButton [channel] , new TGLayoutHints(kLHintsTop | kLHintsExpandX,5,5,2,2));
 
-	trg_label[channel] =  new TGLabel (fGframes[channel] , new TGString ("TR Level [mV]:"));
+	trg_label[channel] =  new TGLabel (fGframes[channel] , new TGString ("TR Level [ADC]:"));
         fGframes[channel] -> AddFrame(trg_label [channel] , new TGLayoutHints(kLHintsTop | kLHintsExpandX,5,5,2,2));
 	trg_entry[channel] = new TGTextEntry ( fGframes[channel] , new TGTextBuffer (6) );
 	trg_entry[channel] -> AppendText (std::to_string(channel_thr[channel]).c_str());
         fGframes[channel] -> AddFrame(trg_entry [channel] , new TGLayoutHints(kLHintsTop | kLHintsExpandX,5,5,2,2));
 
-	ofs_label[channel] =  new TGLabel (fGframes[channel] , new TGString ("Offset [mV]:"));
+	ofs_label[channel] =  new TGLabel (fGframes[channel] , new TGString ("Offset [%]:"));
         fGframes[channel] -> AddFrame(ofs_label [channel] , new TGLayoutHints(kLHintsTop | kLHintsExpandX,5,5,2,2));
 	ofs_entry[channel] = new TGTextEntry ( fGframes[channel] , new TGTextBuffer (6) );
 	ofs_entry[channel] -> AppendText (std::to_string(channel_ofs[channel]).c_str());
@@ -213,6 +213,5 @@ void MyConfigFrame::OnAdcRangeSelected(Int_t id)
 
     Layout();
 }
-
 
 

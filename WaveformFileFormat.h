@@ -6,7 +6,7 @@
 #pragma pack(push, 1)
 
 struct FileHeader {
-    char     magic[8] = "WFv1RAM";
+    char     magic[8] = "WFv2RAM";
     uint32_t version;
 
     uint32_t n_channels;
@@ -20,13 +20,17 @@ struct FileHeader {
     uint32_t adc_bits;
     uint32_t sample_format;
 
-    uint32_t adc_event_size;   // from ADC_EVENT_SIZE
     uint32_t adc_pretrigger;   // from ADC_PRETRIGGER
 
     int64_t  file_start_time_ns;
     int64_t  file_end_time_ns;
 
     uint64_t reserved[2];
+
+    static constexpr uint32_t MAX_CHANNELS = 16;
+    int32_t  adc_range_mV_by_ch[MAX_CHANNELS];
+    int32_t  threshold_adc_by_ch[MAX_CHANNELS];
+    float    offset_percent_by_ch[MAX_CHANNELS];
 };
 
 struct BufferHeader {

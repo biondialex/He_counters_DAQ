@@ -309,9 +309,9 @@ static FileHeader make_file_header()
     std::memset(&h, 0, sizeof(h));
 
     // magic and version
-    const char magic_str[8] = { 'W','F','v','1','R','A','W', '\0' };
+    const char magic_str[8] = { 'W','F','v','2','R','A','W', '\0' };
     std::memcpy(h.magic, magic_str, sizeof(magic_str));
-    h.version = 1;
+    h.version = 2;
 
     // channel info
     h.n_channels   = 0;
@@ -332,12 +332,25 @@ static FileHeader make_file_header()
     h.adc_bits      = 8;                               // your card
     h.sample_format = 1;                               // 1 = signed 8-bit (likely for bipolar ADC)
 
-    h.adc_event_size = static_cast<uint32_t>(ADC_EVENT_SIZE);
     h.adc_pretrigger = static_cast<uint32_t>(ADC_PRETRIGGER);
 
     // timestamps
     h.file_start_time_ns = now_ns();
     h.file_end_time_ns   = 0;  // will be filled when file is closed cleanly
+
+    // Per-channel config (disabled channels are flagged)
+    constexpr int32_t kDisabledFlag = -9999;
+    for (uint32_t ch = 0; ch < FileHeader::MAX_CHANNELS; ++ch) {
+        if (ch < CHANNEL_NUMBER && channel_enabled[ch]) {
+            h.adc_range_mV_by_ch[ch] = channel_adc_range[ch];
+            h.threshold_adc_by_ch[ch] = channel_thr[ch];
+            h.offset_percent_by_ch[ch] = static_cast<float>(channel_ofs[ch]);
+        } else {
+            h.adc_range_mV_by_ch[ch] = kDisabledFlag;
+            h.threshold_adc_by_ch[ch] = kDisabledFlag;
+            h.offset_percent_by_ch[ch] = static_cast<float>(kDisabledFlag);
+        }
+    }
 
     // reserved already zeroed by memset
     return h;
@@ -456,6 +469,9 @@ void close_run_file()
 // Energy Filter
 // ***********************************************************************
 
+// Pre-average factor for energy filter (set to 1 to disable)
+static constexpr int ENERGY_PREAVERAGE = 4;
+
 double energy_filter(const int8_t* in, //Input waveform
                      int           N, // Dimension of the waveform (ADC_EVENT_SIZE)
                      int           pretrigger,//Dimension of pretrigger (ADC_PRETRIGGER)
@@ -465,20 +481,54 @@ double energy_filter(const int8_t* in, //Input waveform
     if (!in || N <= 0 || window_size <= 0 || n_passes <= 0)
         return 0.0;
 
+    // Pre-average waveform to improve effective resolution
+    int avg = ENERGY_PREAVERAGE;
+    if (avg < 1) avg = 1;
+    if (avg > N) avg = N;
+
+    int drop = (avg > 1) ? (N % avg) : 0; // drop leading samples if not divisible
+    int N_adj = N - drop;
+    if (N_adj <= 0)
+        return 0.0;
+
+    int N_use = (avg > 1) ? (N_adj / avg) : N;
+    if (N_use <= 0)
+        return 0.0;
+
     float buf1[N];
     float buf2[N];
-    // Clamp window to [1, N]
+
+    if (avg > 1) {
+        const int8_t* src_in = in + drop;
+        const float inv = 1.0f / static_cast<float>(avg);
+        for (int i = 0; i < N_use; ++i) {
+            int sum = 0;
+            int base = i * avg;
+            for (int k = 0; k < avg; ++k)
+                sum += src_in[base + k];
+            buf1[i] = static_cast<float>(sum) * inv;
+        }
+    } else {
+        for (int i = 0; i < N_use; ++i)
+            buf1[i] = static_cast<float>(in[i]);
+    }
+
+    // Clamp window to [1, N_use]
     int W = window_size;
-    if (W > N) W = N;
+    if (W > N_use) W = N_use;
+    if (W < 1) W = 1;
+
+    // Adjust pretrigger for dropped/averaged samples
+    int pre_adj = pretrigger - drop;
+    if (pre_adj < 0) pre_adj = 0;
+    if (pre_adj > N_adj) pre_adj = N_adj;
+    int pre_ds = (avg > 1) ? (pre_adj / avg) : pre_adj;
+    if (pre_ds > N_use) pre_ds = N_use;
 
     // Compute baseline length once
-    int baseline_len = static_cast<int>(0.8 * static_cast<double>(pretrigger));
+    int baseline_len = static_cast<int>(0.8 * static_cast<double>(pre_ds));
     if (baseline_len < 1) baseline_len = 1;
-    if (baseline_len > N) baseline_len = N;
-
-    // Copy input to first buffer
-    for (int i = 0; i < N; ++i)
-        buf1[i] = static_cast<float>(in[i]);
+    if (baseline_len > N_use) baseline_len = N_use;
 
     float* src = buf1;
     float* dst = buf2;
@@ -488,13 +538,13 @@ double energy_filter(const int8_t* in, //Input waveform
         double sum = 0.0;
 
         // First W samples: growing window
-        for (int i = 0; i < W && i < N; ++i) {
+        for (int i = 0; i < W && i < N_use; ++i) {
             sum += src[i];
             dst[i] = static_cast<float>(sum / static_cast<double>(i + 1));
         }
 
         // Remaining samples: full window
-        for (int i = W; i < N; ++i) {
+        for (int i = W; i < N_use; ++i) {
             sum += src[i];
             sum -= src[i - W];
             dst[i] = static_cast<float>(sum / static_cast<double>(W));
@@ -509,7 +559,7 @@ double energy_filter(const int8_t* in, //Input waveform
     double max_val;
 
     // First sample handled separately so we can init max_val
-    if (N > 0) {
+    if (N_use > 0) {
         // i = 0
         sum += src[0];
         dst[0] = static_cast<float>(sum); // window size = 1 here
@@ -523,7 +573,7 @@ double energy_filter(const int8_t* in, //Input waveform
     }
 
     // i from 1 to W-1 (growing window)
-    for (int i = 1; i < W && i < N; ++i) {
+    for (int i = 1; i < W && i < N_use; ++i) {
         sum += src[i];
         double v = sum / static_cast<double>(i + 1);
         dst[i] = static_cast<float>(v);
@@ -536,7 +586,7 @@ double energy_filter(const int8_t* in, //Input waveform
     }
 
     // i from W to N-1 (full window size W)
-    for (int i = W; i < N; ++i) {
+    for (int i = W; i < N_use; ++i) {
         sum += src[i];
         sum -= src[i - W];
         double v = sum / static_cast<double>(W);
