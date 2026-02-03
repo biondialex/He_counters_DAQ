@@ -15,6 +15,7 @@
 #include "MyMainFrame.h"
 #include "MyConfigFrame.h"
 #include "MySpectrumFrame.h"
+#include "MyOfflineSpectrumFrame.h"
 #include "device_config.h"
 #include "spectrum_acq.h"
 #include <cmath>
@@ -339,6 +340,14 @@ void MyMainFrame::OnShowSpectra()
     }
 }
 
+void MyMainFrame::OnShowOfflineSpectra()
+{
+    if (!fOfflineFrame) {
+        fOfflineFrame = new MyOfflineSpectrumFrame(gClient->GetRoot(), 1100, 700);
+    } else {
+        fOfflineFrame->MapRaised();
+    }
+}
 
 
 //======================================================================
@@ -350,6 +359,7 @@ MyMainFrame::MyMainFrame(const TGWindow *p, UInt_t w, UInt_t h)
     Resize(w, h);
     SetWindowName("SPECTRUM ACQ");
     fSpectrumFrame = nullptr;
+    fOfflineFrame = nullptr;
 
     fGStatusFrame = new TGGroupFrame(this, new TGString("STATUS"), kHorizontalFrame);
     fGStatusLabel = new TGLabel(fGStatusFrame, new TGString("DISCONNECTED"));
@@ -378,6 +388,10 @@ MyMainFrame::MyMainFrame(const TGWindow *p, UInt_t w, UInt_t h)
     showSpectraButton= new TGTextButton(this, "&Show Spectra");
     showSpectraButton->Connect("Clicked()", "MyMainFrame", this, "OnShowSpectra()");
     AddFrame(showSpectraButton, new TGLayoutHints(kLHintsTop | kLHintsExpandX,5,5,2,2));
+
+    showOfflineSpectraButton = new TGTextButton(this, "Show &Offline Spectra");
+    showOfflineSpectraButton->Connect("Clicked()", "MyMainFrame", this, "OnShowOfflineSpectra()");
+    AddFrame(showOfflineSpectraButton, new TGLayoutHints(kLHintsTop | kLHintsExpandX,5,5,2,2));
 
     TGHorizontalFrame *fSaveCountFrame = new TGHorizontalFrame(this);
     auto *label = new TGLabel(fSaveCountFrame, "Waveforms to keep:");

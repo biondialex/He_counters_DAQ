@@ -14,11 +14,12 @@
 extern TGraph* gr[CHANNEL_NUMBER];
 
 class MySpectrumFrame;
+class MyOfflineSpectrumFrame;
 
 class MyMainFrame : public TGMainFrame {
 private:
    TGCompositeFrame *fCframe;
-   TGTextButton     *fConnect, *fRunStop, *fConfig, *fExit, *showSpectraButton;
+   TGTextButton     *fConnect, *fRunStop, *fConfig, *fExit, *showSpectraButton, *showOfflineSpectraButton;
    TGGroupFrame     *fGStatusFrame;
    TGLabel          *fGStatusLabel;
    TGLabel          *fWaveformCounterLabel;
@@ -28,6 +29,7 @@ private:
    TGNumberEntry    *fWaveformCountEntry;
    TGTextButton     *fAutoSaveButton;
    MySpectrumFrame *fSpectrumFrame;
+   MyOfflineSpectrumFrame *fOfflineFrame;
    TGLabel* fRunFileLabel;
 
    int waveform_save_limit;
@@ -48,6 +50,7 @@ public:
    void StartStopAcq();
    void RefreshGraph();
    void OnShowSpectra();
+   void OnShowOfflineSpectra();
    void OnSelectFile();
 
 

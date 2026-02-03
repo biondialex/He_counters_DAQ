@@ -6,7 +6,7 @@
 #pragma pack(push, 1)
 
 struct FileHeader {
-    char     magic[8] = "WFv2RAM";
+    char     magic[8] = "WFv2RAW";
     uint32_t version;
 
     uint32_t n_channels;

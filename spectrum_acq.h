@@ -50,5 +50,12 @@ void *acq_loop (void* arg);
 void start_run_visual_timer();
 double get_run_visual_elapsed_seconds();
 
+// Energy filter (used by offline analysis too)
+double energy_filter(const int8_t* in,
+                     int           N,
+                     int           pretrigger,
+                     int           window_size,
+                     int           n_passes);
+
 
 #endif 
