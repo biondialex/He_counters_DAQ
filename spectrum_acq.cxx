@@ -170,7 +170,7 @@ int configure_spectrum_device() {
 	    if ( channel_trig_pol [card_index * 4] == 2) dwError += spcm_dwSetParam_i32 (hDrv[card_index], SPC_TRIG_CH0_MODE, SPC_TM_POS); //set trigger on positive edge
 	    if ( channel_trig_pol [card_index * 4] == 1) dwError += spcm_dwSetParam_i32 (hDrv[card_index], SPC_TRIG_CH0_MODE, SPC_TM_NEG); //set trigger on negative edge
 	    if ( channel_trig_pol [card_index * 4] == 0) dwError += spcm_dwSetParam_i32 (hDrv[card_index], SPC_TRIG_CH0_MODE, SPC_TM_NONE); //disable trigger on this channel
-	    dwError += spcm_dwSetParam_i32 (hDrv[card_index], SPC_TRIG_CH0_LEVEL0, channel_thr [ch0] * 127 / channel_adc_range[ch0]); //set trigger level
+	    dwError += spcm_dwSetParam_i32 (hDrv[card_index], SPC_TRIG_CH0_LEVEL0, channel_thr [ch0]); //set trigger level
 		} else 
 			dwError += spcm_dwSetParam_i32 (hDrv[card_index], SPC_TRIG_CH0_MODE, SPC_TM_NONE); // disable trigger from channel 0
 			
@@ -179,7 +179,7 @@ int configure_spectrum_device() {
 			if ( channel_trig_pol [card_index * 4 + 1] == 2) dwError += spcm_dwSetParam_i32 (hDrv[card_index], SPC_TRIG_CH1_MODE, SPC_TM_POS); //set trigger on positive edge
 			if ( channel_trig_pol [card_index * 4 + 1] == 1) dwError += spcm_dwSetParam_i32 (hDrv[card_index], SPC_TRIG_CH1_MODE, SPC_TM_NEG); //set trigger on negative edge
 			if ( channel_trig_pol [card_index * 4 + 1] == 0) dwError += spcm_dwSetParam_i32 (hDrv[card_index], SPC_TRIG_CH1_MODE, SPC_TM_NONE); //disable trigger on this channel
-			dwError += spcm_dwSetParam_i32 (hDrv[card_index], SPC_TRIG_CH1_LEVEL0, channel_thr [ch1] * 127 / channel_adc_range[ch1]); //set trigger level
+			dwError += spcm_dwSetParam_i32 (hDrv[card_index], SPC_TRIG_CH1_LEVEL0, channel_thr [ch1]); //set trigger level
 		} else 
 			dwError += spcm_dwSetParam_i32 (hDrv[card_index], SPC_TRIG_CH1_MODE, SPC_TM_NONE); // disable trigger from channel 1
 		
@@ -188,7 +188,7 @@ int configure_spectrum_device() {
 			if ( channel_trig_pol [card_index * 4 + 2] == 2) dwError += spcm_dwSetParam_i32 (hDrv[card_index], SPC_TRIG_CH2_MODE, SPC_TM_POS); //set trigger on positive edge
 			if ( channel_trig_pol [card_index * 4 + 2] == 1) dwError += spcm_dwSetParam_i32 (hDrv[card_index], SPC_TRIG_CH2_MODE, SPC_TM_NEG); //set trigger on negative edge
 			if ( channel_trig_pol [card_index * 4 + 2] == 0) dwError += spcm_dwSetParam_i32 (hDrv[card_index], SPC_TRIG_CH2_MODE, SPC_TM_NONE); //disable trigger on this channel
-			dwError += spcm_dwSetParam_i32 (hDrv[card_index], SPC_TRIG_CH2_LEVEL0, channel_thr [ch2] * 127 / channel_adc_range[ch2]); //set trigger level
+			dwError += spcm_dwSetParam_i32 (hDrv[card_index], SPC_TRIG_CH2_LEVEL0, channel_thr [ch2]); //set trigger level
 		} else 
 			dwError += spcm_dwSetParam_i32 (hDrv[card_index], SPC_TRIG_CH2_MODE, SPC_TM_NONE); // disable trigger from channel 2
 		
@@ -197,7 +197,7 @@ int configure_spectrum_device() {
 			if ( channel_trig_pol [card_index * 4 + 3] == 2) dwError += spcm_dwSetParam_i32 (hDrv[card_index], SPC_TRIG_CH3_MODE, SPC_TM_POS); //set trigger on positive edge
 			if ( channel_trig_pol [card_index * 4 + 3] == 1) dwError += spcm_dwSetParam_i32 (hDrv[card_index], SPC_TRIG_CH3_MODE, SPC_TM_NEG); //set trigger on negative edge
 			if ( channel_trig_pol [card_index * 4 + 3] == 0) dwError += spcm_dwSetParam_i32 (hDrv[card_index], SPC_TRIG_CH3_MODE, SPC_TM_NONE); //disable trigger on this channel
-			dwError += spcm_dwSetParam_i32 (hDrv[card_index], SPC_TRIG_CH3_LEVEL0, channel_thr [ch3] * 127 / channel_adc_range[ch3]); //set trigger level	
+			dwError += spcm_dwSetParam_i32 (hDrv[card_index], SPC_TRIG_CH3_LEVEL0, channel_thr [ch3]); //set trigger level	
 		} else 
 			dwError += spcm_dwSetParam_i32 (hDrv[card_index], SPC_TRIG_CH3_MODE, SPC_TM_NONE); // disable trigger from channel 3
 		
@@ -460,13 +460,13 @@ double energy_filter(const int8_t* in, //Input waveform
                      int           N, // Dimension of the waveform (ADC_EVENT_SIZE)
                      int           pretrigger,//Dimension of pretrigger (ADC_PRETRIGGER)
                      int           window_size, //Size of the moving average window
-                     int           n_passes, // Number of moving averages to perfrom
-                     float*        buf1, //Preallocated working buffers
-                     float*        buf2)
+                     int           n_passes)
 {
-    if (!in || !buf1 || !buf2 || N <= 0 || window_size <= 0 || n_passes <= 0)
+    if (!in || N <= 0 || window_size <= 0 || n_passes <= 0)
         return 0.0;
 
+    float buf1[N];
+    float buf2[N];
     // Clamp window to [1, N]
     int W = window_size;
     if (W > N) W = N;
@@ -567,11 +567,21 @@ bool software_trigger_pass(int chGlobal,const int8_t* src,int nEnabled,int k)
     int end = ADC_PRETRIGGER + post;
     if (end > ADC_EVENT_SIZE) end = ADC_EVENT_SIZE;
 
-    int thr = channel_thr[chGlobal] * 127 / channel_adc_range[chGlobal];       // threshold in ADC counts
+    int thr = channel_thr[chGlobal];       // threshold in raw ADC counts (signed)
     int pol = channel_trig_pol[chGlobal];  // 1 = neg, 2 = pos, 3 = both
 
-    if (thr <= 0 || start >= end)
-        return true; // trivial: no threshold or empty window → accept
+    if (start >= end)
+        return true; // no window to inspect → accept
+
+    bool checkNeg = (pol & 0x1) != 0;
+    bool checkPos = (pol & 0x2) != 0;
+
+    if (!checkNeg && !checkPos)
+        return true; // no polarity selected → accept
+
+    // limit to the actual ADC dynamic range (data are int8_t)
+    if (thr > 127) thr = 127;
+    if (thr < -128) thr = -128;
 
     bool fired = false;
 
@@ -579,13 +589,13 @@ bool software_trigger_pass(int chGlobal,const int8_t* src,int nEnabled,int k)
         std::size_t sampleIndex = static_cast<std::size_t>(j) * nEnabled + k;
         int s = src[sampleIndex];  // int8_t → [-128, 127]
 
-        // positive polarity: pulse above +thr
-        if ((pol & 0x2) && s >= thr) {
+        // positive polarity: pulse goes above the configured threshold
+        if (checkPos && s >= thr) {
             fired = true;
             break;
         }
-        // negative polarity: pulse below -thr
-        if ((pol & 0x1) && s <= -thr) {
+        // negative polarity: pulse goes below the configured threshold
+        if (checkNeg && s <= thr) {
             fired = true;
             break;
         }
@@ -628,8 +638,6 @@ void* acq_loop(void* arg) {
     //std::ofstream test_file("test.dat");
     std::cout << "acq loop start" << std::endl;
 
-    static float energy_buf1[ADC_EVENT_SIZE];
-    static float energy_buf2[ADC_EVENT_SIZE];
     double E = 0.0;
 
     while (1) {
@@ -726,14 +734,12 @@ void* acq_loop(void* arg) {
                 ADC_EVENT_SIZE,
                 ADC_PRETRIGGER,
                 500,   
-                3,       
-                energy_buf1,
-                energy_buf2
+                3
             );
 
             // Energy in ADC counts; ignore negative energies
             if (E > 0.0) {
-                double E1 = E / 127 * channel_adc_range[chGlobal];
+                double E1 = E / 255 * channel_adc_range[chGlobal];
                 // Clamp to histogram range
                 double e_clamped = (E1 >= ENERGY_MAX) ? (ENERGY_MAX - 1e-6) : E1;
 
@@ -768,4 +774,3 @@ void* acq_loop(void* arg) {
         }
     }
 }
-
